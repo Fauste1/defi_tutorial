@@ -52,4 +52,31 @@ contract('TokenFarm', ([owner, investor]) => {
             assert.equal(balance.toString(), tokens('1000000'))
         })
     })
+
+    describe('Farming Tokens', async () => {
+        it('Rewards investors for staking mDAI tokens', async () => {
+            let result
+
+            // Check investor balance before staking
+            result = await daiToken.balanceOf(investor)
+            assert.equal(result.toString(), tokens('100'), 'Investor mDai balance incorrect prior to staking')
+
+            // Stake Mock DAI Tokens
+            await daiToken.approve(tokenFarm.address, tokens('100'), { from: investor})
+            await tokenFarm.stakeTokens(tokens('100'), { from: investor})
+
+            // Check staking result
+            result = await daiToken.balanceOf(investor)
+            assert.equal(result.toString(), tokens('0'), 'Investor mDai balance incorrect after staking')
+
+            result = await daiToken.balanceOf(tokenFarm.address)
+            assert.equal(result.toString(), tokens('100'), `Contract balance of mDAI didn't increase`)
+
+            result = await tokenFarm.stakingBalance(investor)
+            assert.equal(result.toString(), tokens('100'), `Investor didn't stake properly`)
+
+            result = await tokenFarm.isStaking(investor)
+            assert.equal(result.toString(), 'true', `Investor is not marked as 'Staking'`)
+        })
+    })
 })
