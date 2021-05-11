@@ -77,6 +77,33 @@ contract('TokenFarm', ([owner, investor]) => {
 
             result = await tokenFarm.isStaking(investor)
             assert.equal(result.toString(), 'true', `Investor is not marked as 'Staking'`)
+
+            // Issue tokens
+            await tokenFarm.issueTokens({ from: owner })
+
+            // Check balances after issuance
+            result = await dappToken.balanceOf(investor)
+            assert.equal(result.toString(), tokens('100'), `Investor didn't get dappTokens reward`)
+
+            // Ensure only contract owner can call the function
+            await tokenFarm.issueTokens({ from: investor }).should.be.rejected
+
+            // Unstake tokens by investor
+            await tokenFarm.unstakeAllTokens({ from: investor })
+            result = await daiToken.balanceOf(investor)
+            assert.equal(result.toString(), tokens('100'), `Investor didn't unstake mDAI successfully`)
+            
+            result = await daiToken.balanceOf(tokenFarm.address)
+            assert.equal(result.toString(), tokens('0'), `There should not be any mDAI left over`)
+
+            result = await tokenFarm.stakingBalance(investor)
+            assert.equal(result.toString(), tokens('0'), `Investor should not have any mDAI saked in the contract`)
+
+            result = await tokenFarm.isStaking(investor)
+            assert.equal(result.toString(), 'false', `Investor should not be marked as staking`)
+
+            // Attempt unstaking by user with 0 balance
+            await tokenFarm.unstakeAllTokens({ from: owner }).should.be.rejected
         })
     })
 })
