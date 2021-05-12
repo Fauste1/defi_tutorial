@@ -1,8 +1,13 @@
 import React, { Component } from 'react'
+
+import Main from './Main'
 import Navbar from './Navbar'
 import './App.css'
-import Web3 from 'web3'
+
 import DaiToken from '../abis/DaiToken.json'
+import DappToken from '../abis/DappToken.json'
+import TokenFarm from '../abis/TokenFarm.json'
+import Web3 from 'web3'
 
 class App extends Component {
 
@@ -30,6 +35,30 @@ class App extends Component {
     } else {
       window.alert('DaiToken contract not deployed to dectected network.')
     }
+
+    // Load DappToken
+    const dappTokenData = DappToken.networks[networkId]
+    if (dappTokenData) {
+      const dappToken = new web3.eth.Contract(DappToken.abi, dappTokenData.address)
+      this.setState({ dappToken })
+      const dappTokenBalance = await dappToken.methods.balanceOf(this.state.account).call()
+      this.setState({ dappTokenBalance: dappTokenBalance.toString() })
+    } else {
+      window.alert('DappToken contract not deployed to dectected network.')
+    }
+
+    // Load TokenFarm
+    const tokenFarmData = TokenFarm.networks[networkId]
+    if (tokenFarmData) {
+      const tokenFarm = new web3.eth.Contract(TokenFarm.abi, tokenFarmData.address)
+      this.setState({ tokenFarm })
+      const stakingBalance = await tokenFarm.methods.stakingBalance(this.state.account).call()
+      this.setState({ stakingBalance: stakingBalance.toString() })
+    } else {
+      window.alert('TokenFarm contract not deployed to dectected network.')
+    }
+
+    this.setState({ loading: false })
   }
 
   async loadWeb3() {
@@ -43,6 +72,22 @@ class App extends Component {
     else {
       window.alert('Non-ethereum based browser detected. Consider MetaMask!')
     }
+  }
+
+  stakeTokens = (amount) => {
+    this.setState({ loading: true })
+    this.state.daiToken.methods.approve(this.state.tokenFarm._address, amount).send({ from: this.state.account }).on('transactionHash', (hash) => {
+      this.state.tokenFarm.methods.stakeTokens(amount).send({ from: this.state.account }).on('transactionHash', (hash) => {
+        this.setState({ loading: false })
+      })
+    })
+  }
+
+  unstakeTokens = (amount) => {
+    this.setState({ loading: true })
+    this.state.tokenFarm.methods.unstakeAllTokens().send({ from: this.state.account }).on('transactionHash', (hash) => {
+      this.setState({ loading: false })
+    })
   }
 
   constructor(props) {
@@ -60,6 +105,17 @@ class App extends Component {
   }
 
   render() {
+    let content = this.state.loading 
+      ? <p id="loader" className="text-center"> Loading... </p> 
+      : <Main 
+        daiTokenBalance = { this.state.daiTokenBalance }
+        dappTokenBalance = { this.state.dappTokenBalance }
+        stakingBalance = { this.state.stakingBalance }
+        stakeTokens = { this.stakeTokens }
+        unstakeTokens = { this.unstakeTokens }
+      />
+
+
     return (
       <div>
         <Navbar account={this.state.account} />
@@ -74,7 +130,7 @@ class App extends Component {
                 >
                 </a>
 
-                <h1>Hello, World!</h1>
+                {content}
 
               </div>
             </main>
