@@ -1,13 +1,61 @@
 import React, { Component } from 'react'
 import Navbar from './Navbar'
 import './App.css'
+import Web3 from 'web3'
+import DaiToken from '../abis/DaiToken.json'
 
 class App extends Component {
+
+  async componentWillMount() {
+    await this.loadWeb3()
+    await this.loadBlockchainData()
+  }
+
+  async loadBlockchainData() {
+    const web3 = window.web3
+
+    const accounts = await web3.eth.getAccounts()
+    this.setState({ account: accounts[0] })
+
+    const networkId = await web3.eth.net.getId()
+    console.log(networkId) // Returns '5777' but MM says '1337'
+
+    // Load DaiToken
+    const daiTokenData = DaiToken.networks[networkId]
+    if (daiTokenData) {
+      const daiToken = new web3.eth.Contract(DaiToken.abi, daiTokenData.address)
+      this.setState({ daiToken })
+      const daiTokenBalance = await daiToken.methods.balanceOf(this.state.account).call()
+      this.setState({ daiTokenBalance: daiTokenBalance.toString() })
+    } else {
+      window.alert('DaiToken contract not deployed to dectected network.')
+    }
+  }
+
+  async loadWeb3() {
+    if (window.ethereum) {
+      window.web3 = new Web3(window.ethereum)
+      await window.ethereum.enable()
+    }
+    else if (window.web3) {
+      window.web3 = new Web3(window.web3.currentProvider)
+    }
+    else {
+      window.alert('Non-ethereum based browser detected. Consider MetaMask!')
+    }
+  }
 
   constructor(props) {
     super(props)
     this.state = {
-      account: '0x0'
+      account: '',
+      daiToken: {},
+      dappToken: {},
+      tokenFarm: {},
+      daiTokenBalance: '0',
+      dappTokenBalance: '0',
+      stakingBalance: '0',
+      loading: true
     }
   }
 
